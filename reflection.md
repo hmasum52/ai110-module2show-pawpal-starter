@@ -16,6 +16,9 @@ The user triggers the scheduler, which selects and orders tasks based on priorit
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+
+The initial design centered on five classes: **Owner**, **Pet**, **Task**, **Scheduler**, and **DailyPlan**. Owner holds the user's name and daily time budget; Pet stores the animal's profile (name, species, age, notes). Task represents a single care activity with a title, duration, priority, category, and a flag for whether it is required. Scheduler owns the task pool and the time budget, and is responsible for selecting and ordering tasks. DailyPlan is the output of the scheduler — it holds the accepted tasks, the skipped tasks, and the total duration. Owner associates with one Pet and one Scheduler; Scheduler produces one DailyPlan; both Scheduler and DailyPlan aggregate many Tasks.
+
 <!-- add mermaid diagram here -->
 ```mermaid
 classDiagram
@@ -68,6 +71,16 @@ classDiagram
     DailyPlan "1" o-- "many" Task : contains
 ``` 
 - What classes did you include, and what responsibilities did you assign to each?
+
+The classes and their responsibilities are as follows:
+- **Owner**: Stores the user's name, available time for pet care, and any preferences. Responsible for setting availability and providing context for scheduling.
+- **Pet**: Stores the pet's name, species, age, and notes. Responsible
+for providing a profile that can inform task selection (e.g., a dog might have different care needs than a cat).
+- **Task**: Represents a single care activity with attributes for title, duration, priority,
+category, and whether it is required. Responsible for calculating a priority score and providing a string representation.
+- **Scheduler**: Holds the list of tasks and the time budget. Responsible for adding/removing tasks, generating a daily plan based on constraints and priorities, and explaining the reasoning behind the plan.
+- **DailyPlan**: Contains the scheduled tasks, total duration, and any skipped tasks.
+Responsible for displaying the plan and providing reasoning for task selection.
 
 **b. Design changes**
 

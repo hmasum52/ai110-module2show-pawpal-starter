@@ -2,6 +2,17 @@
 
 ## 1. System Design
 
+Three core actions a user should be able to perform:
+
+1. Enter owner + pet profile
+The user provides basic context: their name, the pet's name, species, and available time for the day. This feeds constraints into the scheduler so the plan is personalized.
+
+2. Add / manage care tasks
+The user creates tasks with at minimum a title, duration (minutes), and priority (low/medium/high). This is the task list the scheduler draws from — walks, feeding, meds, grooming, etc.
+
+3. Generate and view a daily schedule
+The user triggers the scheduler, which selects and orders tasks based on priority and time constraints, then displays the resulting plan with reasoning (e.g., "Morning walk scheduled first because it's high priority and takes 20 min").
+
 **a. Initial design**
 
 - Briefly describe your initial UML design.

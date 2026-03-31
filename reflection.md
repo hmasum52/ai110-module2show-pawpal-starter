@@ -16,6 +16,57 @@ The user triggers the scheduler, which selects and orders tasks based on priorit
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+<!-- add mermaid diagram here -->
+```mermaid
+classDiagram
+    class Owner {
+        +String name
+        +int available_minutes
+        +dict preferences
+        +set_availability(minutes)
+    }
+
+    class Pet {
+        +String name
+        +String species
+        +int age
+        +String notes
+        +get_profile() dict
+    }
+
+    class Task {
+        +String title
+        +int duration
+        +String priority
+        +String category
+        +bool is_required
+        +priority_score() int
+        +__repr__() str
+    }
+
+    class Scheduler {
+        +list~Task~ tasks
+        +int time_budget
+        +add_task(task)
+        +remove_task(title)
+        +generate_plan() DailyPlan
+        +explain_plan() str
+    }
+
+    class DailyPlan {
+        +list~Task~ scheduled_tasks
+        +int total_duration
+        +list~Task~ skipped_tasks
+        +display() str
+        +get_reasoning() str
+    }
+
+    Owner "1" --> "1" Pet : owns
+    Owner "1" --> "1" Scheduler : uses
+    Scheduler "1" o-- "many" Task : holds
+    Scheduler "1" --> "1" DailyPlan : produces
+    DailyPlan "1" o-- "many" Task : contains
+``` 
 - What classes did you include, and what responsibilities did you assign to each?
 
 **b. Design changes**

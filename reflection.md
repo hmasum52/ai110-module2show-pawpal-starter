@@ -87,6 +87,8 @@ Responsible for displaying the plan and providing reasoning for task selection.
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
 
+Yes. The most significant change was to `Scheduler`: the initial design had it take only a `time_budget` integer, but during review it became clear that the scheduler had no access to the owner's preferences or the pet's profile, making personalized scheduling impossible. `Scheduler` was updated to accept `owner` and `pet` directly, and `time_budget` was converted to a `@property` that reads from `owner.available_minutes` — this also eliminated the risk of the budget drifting out of sync if the owner's availability changed after the scheduler was created.
+
 ---
 
 ## 2. Scheduling Logic and Tradeoffs

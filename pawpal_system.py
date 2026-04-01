@@ -11,12 +11,15 @@ class Owner:
         self._pets: list = []
 
     def set_availability(self, minutes: int):
+        """Update the owner's daily available time in minutes."""
         self.available_minutes = minutes
 
     def add_pet(self, pet: "Pet"):
+        """Register a pet under this owner."""
         self._pets.append(pet)
 
     def get_all_tasks(self) -> list:
+        """Return a flat list of all tasks across every owned pet."""
         tasks = []
         for pet in self._pets:
             tasks.extend(pet.tasks)
@@ -32,6 +35,7 @@ class Pet:
         self.tasks: list["Task"] = []
 
     def get_profile(self) -> dict:
+        """Return a dictionary summarising the pet's profile and task count."""
         return {
             "name": self.name,
             "species": self.species,
@@ -41,9 +45,11 @@ class Pet:
         }
 
     def add_task(self, task: "Task"):
+        """Append a task to this pet's task list."""
         self.tasks.append(task)
 
     def remove_task(self, title: str):
+        """Remove all tasks matching the given title from this pet's task list."""
         self.tasks = [t for t in self.tasks if t.title != title]
 
 
@@ -59,12 +65,15 @@ class Task:
         self.completed = False
 
     def priority_score(self) -> int:
+        """Return the numeric score for this task's priority level."""
         return PRIORITY_SCORES[self.priority]
 
     def mark_complete(self):
+        """Mark this task as completed."""
         self.completed = True
 
     def __repr__(self) -> str:
+        """Return a human-readable string representation of the task."""
         required_tag = " [required]" if self.is_required else ""
         status = " [done]" if self.completed else ""
         return f"Task('{self.title}', {self.duration}min, {self.priority}{required_tag}{status})"
@@ -78,6 +87,7 @@ class DailyPlan:
         self.reasoning: list[str] = reasoning or []
 
     def display(self) -> str:
+        """Format and return the daily plan as a human-readable string."""
         lines = ["=== Daily Plan ==="]
         lines.append(f"Total time: {self.total_duration} min\n")
         lines.append("Scheduled:")
@@ -90,6 +100,7 @@ class DailyPlan:
         return "\n".join(lines)
 
     def get_reasoning(self) -> str:
+        """Return the scheduling reasoning as a bulleted string."""
         if not self.reasoning:
             return "No reasoning provided."
         return "\n".join(f"- {r}" for r in self.reasoning)
@@ -103,15 +114,19 @@ class Scheduler:
 
     @property
     def time_budget(self) -> int:
+        """Return the owner's total available minutes as the scheduling budget."""
         return self.owner.available_minutes
 
     def add_task(self, task: Task):
+        """Add a task to the scheduler's task list."""
         self.tasks.append(task)
 
     def remove_task(self, title: str):
+        """Remove all tasks with the given title from the scheduler."""
         self.tasks = [t for t in self.tasks if t.title != title]
 
     def generate_plan(self) -> DailyPlan:
+        """Schedule tasks within the time budget and return a DailyPlan."""
         reasoning = []
         scheduled = []
         skipped = []

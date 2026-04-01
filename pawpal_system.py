@@ -66,7 +66,7 @@ class Task:
 
     def __repr__(self) -> str:
         required_tag = " [required]" if self.is_required else ""
-        status = " ✓" if self.completed else ""
+        status = " [done]" if self.completed else ""
         return f"Task('{self.title}', {self.duration}min, {self.priority}{required_tag}{status})"
 
 
@@ -129,7 +129,7 @@ class Scheduler:
         for task in ordered:
             if task.is_required and task.duration > time_remaining:
                 reasoning.append(
-                    f"Required task '{task.title}' ({task.duration}min) exceeds remaining time ({time_remaining}min) — scheduled anyway."
+                    f"Required task '{task.title}' ({task.duration}min) exceeds remaining time ({time_remaining}min) - scheduled anyway."
                 )
                 scheduled.append(task)
                 time_remaining -= task.duration
@@ -140,7 +140,7 @@ class Scheduler:
             else:
                 skipped.append(task)
                 reasoning.append(
-                    f"Skipped '{task.title}' ({task.duration}min) — only {time_remaining}min left."
+                    f"Skipped '{task.title}' ({task.duration}min) - only {time_remaining}min left."
                 )
 
         return DailyPlan(scheduled, skipped, reasoning)

@@ -26,7 +26,10 @@ classDiagram
         +String name
         +int available_minutes
         +dict preferences
+        -list _pets
         +set_availability(minutes)
+        +add_pet(pet)
+        +get_all_tasks() list
     }
 
     class Pet {
@@ -34,7 +37,10 @@ classDiagram
         +String species
         +int age
         +String notes
+        +list~Task~ tasks
         +get_profile() dict
+        +add_task(task)
+        +remove_task(title)
     }
 
     class Task {
@@ -43,32 +49,51 @@ classDiagram
         +String priority
         +String category
         +bool is_required
+        +bool completed
+        +String time
+        +String frequency
+        +date due_date
         +priority_score() int
+        +mark_complete()
+        +next_occurrence() Task
         +__repr__() str
     }
 
     class Scheduler {
+        +Owner owner
+        +Pet pet
         +list~Task~ tasks
         +int time_budget
         +add_task(task)
         +remove_task(title)
+        +sort_by_time() list
+        +filter_tasks(status, pet_name) list
+        +mark_task_complete(title) Task
+        +detect_conflicts() list
         +generate_plan() DailyPlan
-        +explain_plan() str
     }
 
     class DailyPlan {
         +list~Task~ scheduled_tasks
-        +int total_duration
         +list~Task~ skipped_tasks
+        +int total_duration
+        +list~String~ reasoning
         +display() str
         +get_reasoning() str
     }
 
-    Owner "1" --> "1" Pet : owns
-    Owner "1" --> "1" Scheduler : uses
-    Scheduler "1" o-- "many" Task : holds
+    class detect_cross_pet_conflicts {
+        <<function>>
+        +__call__(schedulers list) list
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Scheduler --> Owner : reads budget from
+    Scheduler --> Pet : schedules for
+    Scheduler "1" o-- "*" Task : holds
     Scheduler "1" --> "1" DailyPlan : produces
-    DailyPlan "1" o-- "many" Task : contains
+    DailyPlan "1" o-- "*" Task : contains
+    detect_cross_pet_conflicts ..> Scheduler : operates on
 ``` 
 - What classes did you include, and what responsibilities did you assign to each?
 

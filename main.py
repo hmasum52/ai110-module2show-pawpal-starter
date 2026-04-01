@@ -1,4 +1,4 @@
-from pawpal_system import Owner, Pet, Task, Scheduler
+from pawpal_system import Owner, Pet, Task, Scheduler, detect_cross_pet_conflicts
 
 # --- Owner ---
 owner = Owner(name="Alex", available_minutes=90)
@@ -145,3 +145,42 @@ for task in buddy_scheduler.tasks:
     due  = f"  due:{task.due_date}" if task.due_date else ""
     done = "  [done]" if task.completed else ""
     print(f"  {task.title}{freq}{due}{done}")
+
+# ======================================================================
+# DEMO — detect_conflicts()  (same-pet and cross-pet)
+# ======================================================================
+print()
+print("=" * 40)
+print("  CONFLICT DETECTION")
+print("=" * 40)
+
+# -- Same-pet conflict: add a second task for Buddy at 07:00 (identical to Morning Walk) --
+buddy_bath = Task("Bath Time", duration=15, priority="medium", category="hygiene", time="07:00")
+buddy_scheduler.add_task(buddy_bath)
+
+print("\n[Same-pet] Buddy's scheduler - pending tasks with a time set:")
+for t in [t for t in buddy_scheduler.tasks if t.time and not t.completed]:
+    print(f"  {t.time}  {t.title} ({t.duration}min)")
+
+print("\n[Same-pet] Running detect_conflicts() on Buddy's scheduler:")
+same_pet_warnings = buddy_scheduler.detect_conflicts()
+if same_pet_warnings:
+    for w in same_pet_warnings:
+        print(f"  WARNING: {w}")
+else:
+    print("  No conflicts found.")
+
+# -- Cross-pet conflict: add a task for Whiskers also at 07:00 --
+whiskers_bath = Task("Bath Time", duration=10, priority="low", category="hygiene", time="07:00")
+whiskers_scheduler.add_task(whiskers_bath)
+
+print("\n[Cross-pet] Running detect_cross_pet_conflicts() across all schedulers:")
+cross_warnings = detect_cross_pet_conflicts([buddy_scheduler, whiskers_scheduler])
+if cross_warnings:
+    for w in cross_warnings:
+        print(f"  WARNING: {w}")
+else:
+    print("  No cross-pet conflicts found.")
+
+print()
+print("(No crashes - conflict detection returns warnings only)")

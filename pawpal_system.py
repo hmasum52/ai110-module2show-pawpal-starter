@@ -7,6 +7,22 @@ PRIORITY_SCORES = {"low": 1, "medium": 2, "high": 3}
 FREQUENCY_DELTA = {"daily": timedelta(days=1), "weekly": timedelta(weeks=1)}
 
 
+def _time_to_minutes(time_str: str) -> int:
+    """
+    Convert a zero-padded "HH:MM" string to total minutes from midnight.
+
+    Examples:
+        "07:00" -> 420
+        "08:30" -> 510
+        "14:00" -> 840
+
+    Used internally so interval overlap math can work on plain integers
+    rather than string comparisons.
+    """
+    hours, minutes = time_str.split(":")
+    return int(hours) * 60 + int(minutes)
+
+
 class Owner:
     def __init__(self, name: str, available_minutes: int, preferences: dict = None):
         self.name = name
@@ -250,6 +266,41 @@ class Scheduler:
 
         return None
 
+    def detect_conflicts(self) -> list[str]:
+        """
+        Check for overlapping time windows among this scheduler's timed tasks.
+
+        Only tasks with a 'time' value set are evaluated — untimed tasks are
+        skipped silently.  For each pair (A, B), the windows overlap when:
+
+            A.start < B.end  AND  B.start < A.end
+
+        where start = _time_to_minutes(task.time) and end = start + task.duration.
+
+        Returns a list of human-readable warning strings — one per conflict.
+        Returns an empty list when no conflicts exist.  Never raises an exception.
+        """
+        warnings = []
+        # Only check tasks that are still pending — completed tasks are done and
+        # should not flag conflicts against their own next-occurrence copies.
+        timed = [t for t in self.tasks if t.time is not None and not t.completed]
+
+        for i in range(len(timed)):
+            for j in range(i + 1, len(timed)):
+                a, b = timed[i], timed[j]
+                a_start = _time_to_minutes(a.time)
+                b_start = _time_to_minutes(b.time)
+                a_end = a_start + a.duration
+                b_end = b_start + b.duration
+
+                if a_start < b_end and b_start < a_end:
+                    warnings.append(
+                        f"CONFLICT [{self.pet.name}]: '{a.title}' ({a.time}, {a.duration}min) "
+                        f"overlaps '{b.title}' ({b.time}, {b.duration}min)"
+                    )
+
+        return warnings
+
     def generate_plan(self) -> DailyPlan:
         """Schedule tasks within the time budget and return a DailyPlan."""
         reasoning = []
@@ -284,3 +335,54 @@ class Scheduler:
                 )
 
         return DailyPlan(scheduled, skipped, reasoning)
+
+
+def detect_cross_pet_conflicts(schedulers: list) -> list[str]:
+    """
+    Check for overlapping time windows across tasks from multiple schedulers
+    (i.e. across different pets belonging to the same owner).
+
+    Builds a flat list of (pet_name, task) pairs from every scheduler, then
+    compares all cross-scheduler pairs using the same interval overlap formula:
+
+        A.start < B.end  AND  B.start < A.end
+
+    Same-pet pairs are skipped here — use Scheduler.detect_conflicts() for those.
+
+    Args:
+        schedulers: List of Scheduler objects to check against each other.
+
+    Returns:
+        A list of human-readable warning strings — one per cross-pet conflict.
+        Returns an empty list when no conflicts exist.  Never raises an exception.
+    """
+    warnings = []
+
+    # Flatten to (pet_name, task) keeping only pending timed tasks
+    labeled = [
+        (sched.pet.name, task)
+        for sched in schedulers
+        for task in sched.tasks
+        if task.time is not None and not task.completed
+    ]
+
+    for i in range(len(labeled)):
+        for j in range(i + 1, len(labeled)):
+            pet_a, a = labeled[i]
+            pet_b, b = labeled[j]
+
+            if pet_a == pet_b:
+                continue  # same-pet conflicts handled by Scheduler.detect_conflicts()
+
+            a_start = _time_to_minutes(a.time)
+            b_start = _time_to_minutes(b.time)
+            a_end = a_start + a.duration
+            b_end = b_start + b.duration
+
+            if a_start < b_end and b_start < a_end:
+                warnings.append(
+                    f"CONFLICT [cross-pet]: '{a.title}' ({pet_a}, {a.time}, {a.duration}min) "
+                    f"overlaps '{b.title}' ({pet_b}, {b.time}, {b.duration}min)"
+                )
+
+    return warnings

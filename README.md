@@ -1,6 +1,39 @@
-# PawPal+ (Module 2 Project)
+# PawPal+
 
-You are building **PawPal+**, a Streamlit app that helps a pet owner plan care tasks for their pet.
+**PawPal+** is a Streamlit app that helps a pet owner plan and schedule daily care tasks for their pet — handling priorities, time constraints, recurring routines, and conflict detection automatically.
+
+---
+
+## Features
+
+### Owner & Pet Profiles
+Set your name, daily time budget (in minutes), and pet details (name, species, age, notes). The scheduler reads the budget directly from the owner profile, so updating your availability is instantly reflected in the next generated plan.
+
+### Priority-Based Scheduling
+Tasks are ranked by a three-tier priority system (`low / medium / high`). Required tasks (e.g., medication) are always scheduled first regardless of budget. Optional tasks then fill remaining time in descending priority order — the plan always maximizes care value within the available time.
+
+### Chronological Sorting
+The `sort_by_time()` algorithm separates tasks into timed (those with an `HH:MM` start time) and untimed groups, sorts the timed group lexicographically (zero-padded `HH:MM` strings sort correctly as plain strings), then appends untimed tasks at the end. The task table always displays in chronological order.
+
+### Conflict Detection
+`detect_conflicts()` checks every pair of pending timed tasks using an interval overlap formula — `A.start < B.end AND B.start < A.end` — and surfaces a warning for each overlap. Completed tasks are excluded so already-done work never triggers false positives. Cross-pet conflicts (two pets owned by the same owner with overlapping tasks) are caught by a separate `detect_cross_pet_conflicts()` function.
+
+### Daily & Weekly Recurrence
+Tasks can be marked `daily` or `weekly`. Completing a recurring task via `mark_task_complete()` automatically appends a fresh copy with `due_date` advanced by the correct `timedelta` (1 day or 7 days). The completed original is preserved in history; the new occurrence appears immediately in the pending task list.
+
+### Pending / Completed Filtering
+`filter_tasks(status, pet_name)` returns only the tasks matching the requested status and pet. The UI uses this to populate the "Mark Complete" dropdown with only pending tasks, keeping the interface clean as the day progresses.
+
+### Daily Plan with Reasoning
+`generate_plan()` returns a `DailyPlan` containing scheduled tasks, skipped tasks, total duration, and a human-readable reasoning list that explains every scheduling decision — why each task was included or skipped.
+
+---
+
+## 📸 Demo
+
+<a href="/course_images/ai110/ui.png" target="_blank"><img src='/course_images/ai110/ui.png' title='PawPal App' width='' alt='PawPal App' class='center-block' /></a>
+
+---
 
 ## Scenario
 

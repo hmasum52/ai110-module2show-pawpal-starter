@@ -6,14 +6,12 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 st.title("🐾 PawPal+")
 
 # ── Session-state bootstrap ──────────────────────────────────────────────────
-# Streamlit reruns the whole script on every interaction, so we keep our
-# objects in st.session_state (the "vault") to avoid resetting them.
 if "owner" not in st.session_state:
-    st.session_state.owner = None          # Owner instance
+    st.session_state.owner = None
 if "pet" not in st.session_state:
-    st.session_state.pet = None            # Pet instance
+    st.session_state.pet = None
 if "scheduler" not in st.session_state:
-    st.session_state.scheduler = None      # Scheduler instance
+    st.session_state.scheduler = None
 
 # ── Step 1 – Owner setup ─────────────────────────────────────────────────────
 st.subheader("Step 1: Owner")
@@ -28,7 +26,6 @@ with col2:
 
 if st.button("Set owner"):
     st.session_state.owner = Owner(owner_name, int(available_minutes))
-    # Reset downstream objects when owner changes
     st.session_state.pet = None
     st.session_state.scheduler = None
     st.success(f"Owner '{owner_name}' saved with {available_minutes} min available.")
@@ -57,8 +54,8 @@ else:
 
     if st.button("Add pet"):
         pet = Pet(pet_name, species, int(pet_age), pet_notes)
-        st.session_state.owner.add_pet(pet)   # register under owner
-        st.session_state.pet = pet            # keep a direct reference
+        st.session_state.owner.add_pet(pet)
+        st.session_state.pet = pet
         st.session_state.scheduler = Scheduler(st.session_state.owner, pet)
         st.success(f"Pet '{pet_name}' added and scheduler initialised.")
 
@@ -78,6 +75,7 @@ st.subheader("Step 3: Add Tasks")
 if st.session_state.scheduler is None:
     st.info("Add a pet first.")
 else:
+    # Task input form
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         task_title = st.text_input("Task title", value="Morning walk")
@@ -88,32 +86,84 @@ else:
     with col4:
         category = st.text_input("Category", value="exercise")
 
-    is_required = st.checkbox("Required task (must be scheduled)")
+    col5, col6, col7 = st.columns(3)
+    with col5:
+        task_time = st.text_input("Start time (HH:MM, optional)", value="")
+    with col6:
+        frequency = st.selectbox("Frequency", ["none", "daily", "weekly"])
+    with col7:
+        is_required = st.checkbox("Required task")
 
     if st.button("Add task"):
-        task = Task(task_title, int(duration), priority, category, is_required)
-        st.session_state.pet.add_task(task)        # attach to pet
-        st.session_state.scheduler.add_task(task)  # register with scheduler
+        time_val = task_time.strip() if task_time.strip() else None
+        freq_val = None if frequency == "none" else frequency
+        task = Task(
+            title=task_title,
+            duration=int(duration),
+            priority=priority,
+            category=category,
+            is_required=is_required,
+            time=time_val,
+            frequency=freq_val,
+        )
+        st.session_state.pet.add_task(task)
+        st.session_state.scheduler.add_task(task)
         st.success(f"Task '{task_title}' added.")
 
-    # Display current tasks
-    all_tasks = st.session_state.scheduler.tasks
-    if all_tasks:
-        st.write("Current tasks:")
+    # ── Task display: sorted by time via Scheduler.sort_by_time() ────────────
+    sched: Scheduler = st.session_state.scheduler
+    sorted_tasks = sched.sort_by_time()
+
+    if sorted_tasks:
+        st.markdown("#### Tasks (sorted by start time)")
         st.table(
             [
                 {
                     "Title": t.title,
+                    "Start": t.time if t.time else "—",
                     "Duration (min)": t.duration,
                     "Priority": t.priority,
                     "Category": t.category,
-                    "Required": t.is_required,
+                    "Frequency": t.frequency if t.frequency else "once",
+                    "Required": "Yes" if t.is_required else "No",
+                    "Status": "Done" if t.completed else "Pending",
                 }
-                for t in all_tasks
+                for t in sorted_tasks
             ]
         )
+
+        # ── Conflict warnings via Scheduler.detect_conflicts() ────────────────
+        conflicts = sched.detect_conflicts()
+        if conflicts:
+            st.markdown("#### Scheduling Conflicts")
+            for msg in conflicts:
+                st.warning(msg)
+        else:
+            st.success("No time conflicts detected.")
     else:
         st.info("No tasks yet. Add one above.")
+
+    st.divider()
+
+    # ── Mark task complete ───────────────────────────────────────────────────
+    st.markdown("#### Mark a Task Complete")
+
+    pending = sched.filter_tasks(status="pending")
+    if pending:
+        pending_titles = [t.title for t in pending]
+        selected_title = st.selectbox("Select task to complete", pending_titles)
+
+        if st.button("Mark complete"):
+            next_task = sched.mark_task_complete(selected_title)
+            if next_task:
+                st.success(
+                    f"'{selected_title}' marked done. "
+                    f"Next occurrence scheduled for {next_task.due_date}."
+                )
+            else:
+                st.success(f"'{selected_title}' marked done.")
+    else:
+        st.info("No pending tasks.")
 
 st.divider()
 
@@ -136,9 +186,10 @@ else:
                 [
                     {
                         "Title": t.title,
+                        "Start": t.time if t.time else "—",
                         "Duration (min)": t.duration,
                         "Priority": t.priority,
-                        "Required": t.is_required,
+                        "Required": "Yes" if t.is_required else "No",
                     }
                     for t in plan.scheduled_tasks
                 ]

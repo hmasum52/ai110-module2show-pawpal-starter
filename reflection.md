@@ -120,13 +120,13 @@ Yes. The most significant change was to `Scheduler`: the initial design had it t
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers three constraints: the owner's daily time budget (`available_minutes`), task priority (`low / medium / high`), and whether a task is required. Time budget is the hard outer limit — it determines what can even be considered. Within that, `is_required` takes precedence over priority score, because missing a required task (e.g., medication) has real consequences. Priority then breaks ties among optional tasks, with higher scores scheduled first. Start time (`time`) is a fourth, softer constraint used for conflict detection and display ordering rather than scheduling inclusion.
+
+Time budget was treated as the most important constraint because it is the one resource that cannot be extended — you can deprioritize a walk, but you cannot add hours to the day.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The scheduler uses a greedy first-fit strategy: it iterates tasks in priority order and schedules each one if it fits in the remaining time. This means a large high-priority task can consume most of the budget and block several smaller lower-priority tasks that would collectively deliver more value. The alternative — an optimal knapsack search — is more accurate but exponentially slower and harder to explain to users. The greedy approach is reasonable here because pet care tasks are few (typically under 20) and owners benefit more from a transparent, predictable plan than from a mathematically optimal one they cannot reason about.
 
 ---
 
@@ -134,13 +134,11 @@ Yes. The most significant change was to `Scheduler`: the initial design had it t
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+AI was used at three stages: initial class design (brainstorming what responsibilities each class should own), generating edge-case test scenarios (e.g., adjacent tasks that touch but don't overlap, recurring tasks completed twice), and updating the Streamlit UI to wire new backend methods into the display. The most helpful prompt pattern was providing the actual code and asking "what is missing or inconsistent" rather than asking for general advice — concrete inputs produced concrete, actionable suggestions.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+When AI suggested adding `detect_cross_pet_conflicts` as a method on `Scheduler`, I chose to keep it as a standalone module-level function instead. A method on `Scheduler` would only have access to one scheduler's tasks, requiring an awkward `other_schedulers` parameter and making the single-responsibility boundary unclear. The standalone function naturally accepts a list of schedulers and keeps `Scheduler` focused on one pet. I verified the decision by checking that the function signature and the call sites in tests remained clean with no circular references.
 
 ---
 
@@ -148,13 +146,13 @@ Yes. The most significant change was to `Scheduler`: the initial design had it t
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+The test suite covers: task creation validation (invalid priority/frequency raise `ValueError`), sorting correctness (`sort_by_time` returns chronological order with untimed tasks trailing), recurrence logic (`mark_task_complete` on a daily task produces a new task with `due_date + 1 day`), conflict detection (overlapping windows flagged, adjacent boundary not flagged, completed tasks excluded), plan generation (required tasks always scheduled even over budget, optional tasks skipped when time runs out), and cross-pet conflict detection (same pet name not double-flagged, empty scheduler list returns safely).
+
+These tests matter because the scheduler's output directly affects a pet's care routine — a silent bug in priority ordering or recurrence could mean a medication task gets skipped every day without the owner noticing.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+High confidence for the core scheduling and conflict detection logic — every significant branch has a test. The main gap is the double-complete edge case: completing a recurring task twice silently adds two next-occurrence copies, which is likely unintended. Next I would test `filter_tasks` with combined `status` + `pet_name` filters, and add a test that verifies the scheduler's total duration never exceeds the budget for optional-only task lists.
 
 ---
 
@@ -162,12 +160,12 @@ Yes. The most significant change was to `Scheduler`: the initial design had it t
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The `time_budget` as a `@property` reading from `owner.available_minutes` is the design decision I am most satisfied with. It eliminated an entire class of potential bugs where the scheduler's budget could drift out of sync with the owner's actual availability, and it made the relationship between `Owner` and `Scheduler` explicit without requiring `Owner` to hold a reference back to `Scheduler`.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+The `generate_plan` method mixes scheduling logic with reasoning string construction in a single loop, making it harder to test the scheduling decisions in isolation from the explanation text. In the next iteration I would separate those two concerns — a pure `_select_tasks()` method that returns scheduled/skipped lists, and a separate layer that generates the reasoning strings from those results.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+Designing the interface before the implementation forces clarity that writing code first does not. Deciding what each class is responsible for — and what it is explicitly not responsible for — made every subsequent implementation choice easier and made AI suggestions easier to evaluate, because there was a clear standard to check them against.

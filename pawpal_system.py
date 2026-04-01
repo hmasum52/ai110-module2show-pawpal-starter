@@ -1,6 +1,10 @@
+from datetime import date, timedelta
+
 VALID_PRIORITIES = {"low", "medium", "high"}
+VALID_FREQUENCIES = {None, "daily", "weekly"}
 
 PRIORITY_SCORES = {"low": 1, "medium": 2, "high": 3}
+FREQUENCY_DELTA = {"daily": timedelta(days=1), "weekly": timedelta(weeks=1)}
 
 
 class Owner:
@@ -54,16 +58,34 @@ class Pet:
 
 
 class Task:
-    def __init__(self, title: str, duration: int, priority: str, category: str, is_required: bool = False, time: str = None):
+    def __init__(
+        self,
+        title: str,
+        duration: int,
+        priority: str,
+        category: str,
+        is_required: bool = False,
+        time: str = None,
+        frequency: str = None,
+        due_date: date = None,
+    ):
         if priority not in VALID_PRIORITIES:
             raise ValueError(f"priority must be one of {VALID_PRIORITIES}, got '{priority}'")
+        if frequency not in VALID_FREQUENCIES:
+            raise ValueError(f"frequency must be one of {VALID_FREQUENCIES}, got '{frequency}'")
         self.title = title
         self.duration = duration
         self.priority = priority
         self.category = category
         self.is_required = is_required
         self.completed = False
-        self.time = time  # Optional start time as "HH:MM" string, e.g. "08:30"
+        self.time = time            # Optional start time as "HH:MM" string, e.g. "08:30"
+        self.frequency = frequency  # None | "daily" | "weekly"
+        self.due_date = due_date    # date object; defaults to today when frequency is set
+
+        # Auto-set due_date to today if the task recurs but no date was given
+        if self.frequency and self.due_date is None:
+            self.due_date = date.today()
 
     def priority_score(self) -> int:
         """Return the numeric score for this task's priority level."""
@@ -73,11 +95,40 @@ class Task:
         """Mark this task as completed."""
         self.completed = True
 
+    def next_occurrence(self) -> "Task":
+        """
+        Return a new Task for the next occurrence of this recurring task.
+
+        Uses FREQUENCY_DELTA to advance the due_date:
+          - "daily"  → due_date + 1 day   (timedelta(days=1))
+          - "weekly" → due_date + 7 days  (timedelta(weeks=1))
+
+        Raises ValueError if called on a non-recurring task (frequency=None).
+        The returned task is a fresh copy: completed=False, same all other fields.
+        """
+        if self.frequency is None:
+            raise ValueError(f"Task '{self.title}' has no frequency — cannot create next occurrence.")
+
+        next_due = self.due_date + FREQUENCY_DELTA[self.frequency]
+
+        return Task(
+            title=self.title,
+            duration=self.duration,
+            priority=self.priority,
+            category=self.category,
+            is_required=self.is_required,
+            time=self.time,
+            frequency=self.frequency,
+            due_date=next_due,
+        )
+
     def __repr__(self) -> str:
         """Return a human-readable string representation of the task."""
         required_tag = " [required]" if self.is_required else ""
         status = " [done]" if self.completed else ""
-        return f"Task('{self.title}', {self.duration}min, {self.priority}{required_tag}{status})"
+        freq_tag = f" [{self.frequency}]" if self.frequency else ""
+        due_tag = f" due:{self.due_date}" if self.due_date else ""
+        return f"Task('{self.title}', {self.duration}min, {self.priority}{required_tag}{status}{freq_tag}{due_tag})"
 
 
 class DailyPlan:
@@ -167,6 +218,37 @@ class Scheduler:
             tasks = [t for t in tasks if not t.completed]
 
         return tasks
+
+    def mark_task_complete(self, title: str) -> "Task | None":
+        """
+        Mark the first matching task complete and, if it recurs, schedule the
+        next occurrence automatically.
+
+        Workflow:
+          1. Find the task by title (first match, case-sensitive).
+          2. Call task.mark_complete() to set completed=True.
+          3. If frequency is "daily" or "weekly", call task.next_occurrence()
+             which uses timedelta to compute the new due_date, then appends
+             the fresh Task copy to this scheduler's task list.
+
+        Args:
+            title: The exact title of the task to complete.
+
+        Returns:
+            The newly created next-occurrence Task if the task recurs, else None.
+        """
+        task = next((t for t in self.tasks if t.title == title), None)
+        if task is None:
+            raise ValueError(f"No task named '{title}' found in scheduler.")
+
+        task.mark_complete()
+
+        if task.frequency is not None:
+            next_task = task.next_occurrence()
+            self.tasks.append(next_task)
+            return next_task
+
+        return None
 
     def generate_plan(self) -> DailyPlan:
         """Schedule tasks within the time budget and return a DailyPlan."""

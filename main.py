@@ -10,9 +10,11 @@ owner.add_pet(buddy)
 owner.add_pet(whiskers)
 
 # --- Tasks for Buddy (Dog) — added OUT OF ORDER intentionally ---
-buddy_walk     = Task("Morning Walk",   duration=20, priority="high",   category="exercise",  is_required=True,  time="07:00")
-buddy_feed     = Task("Feeding",        duration=10, priority="high",   category="nutrition", is_required=True,  time="08:30")
-buddy_playtime = Task("Playtime",       duration=30, priority="medium", category="exercise",                     time="14:00")
+# frequency="daily" / "weekly" tasks will auto-schedule their next occurrence
+# when marked complete via Scheduler.mark_task_complete()
+buddy_walk     = Task("Morning Walk",   duration=20, priority="high",   category="exercise",  is_required=True,  time="07:00", frequency="daily")
+buddy_feed     = Task("Feeding",        duration=10, priority="high",   category="nutrition", is_required=True,  time="08:30", frequency="daily")
+buddy_playtime = Task("Playtime",       duration=30, priority="medium", category="exercise",                     time="14:00", frequency="weekly")
 buddy_groom    = Task("Brushing",       duration=10, priority="low",    category="hygiene",                      time="09:15")
 
 # Add in scrambled time order to prove sorting works
@@ -87,7 +89,7 @@ if pending:
 else:
     print("  No pending tasks.")
 
-# Mark one task complete, then show completed filter
+# Mark directly on the task object (no recurrence side-effect) just to show the filter
 buddy_walk.mark_complete()
 
 print()
@@ -107,3 +109,39 @@ print("  FILTER: wrong pet name (should be empty)")
 print("=" * 40)
 wrong_pet = buddy_scheduler.filter_tasks(pet_name="Whiskers")
 print(f"  Tasks returned: {len(wrong_pet)}  (expected 0)")
+
+# ======================================================================
+# DEMO — Recurring tasks via mark_task_complete()
+# ======================================================================
+print()
+print("=" * 40)
+print("  RECURRING TASKS")
+print("=" * 40)
+
+# Show Buddy's tasks BEFORE completing any recurring ones
+print("\nBefore completing recurring tasks:")
+for task in buddy_scheduler.tasks:
+    freq = f"  [{task.frequency}]" if task.frequency else ""
+    due  = f"  due:{task.due_date}" if task.due_date else ""
+    done = "  [done]" if task.completed else ""
+    print(f"  {task.title}{freq}{due}{done}")
+
+# Complete "Morning Walk" (daily) — should spawn next occurrence at today + 1 day
+next_walk = buddy_scheduler.mark_task_complete("Morning Walk")
+print(f"\n  Completed 'Morning Walk'  ->  next occurrence: {next_walk}")
+
+# Complete "Playtime" (weekly) — should spawn next occurrence at today + 7 days
+next_play = buddy_scheduler.mark_task_complete("Playtime")
+print(f"  Completed 'Playtime'      ->  next occurrence: {next_play}")
+
+# Complete "Brushing" (no frequency) — no new task created
+result = buddy_scheduler.mark_task_complete("Brushing")
+print(f"  Completed 'Brushing'      ->  next occurrence: {result}  (one-off, no recurrence)")
+
+# Show Buddy's tasks AFTER — originals marked done, new occurrences appended
+print("\nAfter completing recurring tasks:")
+for task in buddy_scheduler.tasks:
+    freq = f"  [{task.frequency}]" if task.frequency else ""
+    due  = f"  due:{task.due_date}" if task.due_date else ""
+    done = "  [done]" if task.completed else ""
+    print(f"  {task.title}{freq}{due}{done}")

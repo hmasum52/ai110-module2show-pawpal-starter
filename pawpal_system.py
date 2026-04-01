@@ -54,7 +54,7 @@ class Pet:
 
 
 class Task:
-    def __init__(self, title: str, duration: int, priority: str, category: str, is_required: bool = False):
+    def __init__(self, title: str, duration: int, priority: str, category: str, is_required: bool = False, time: str = None):
         if priority not in VALID_PRIORITIES:
             raise ValueError(f"priority must be one of {VALID_PRIORITIES}, got '{priority}'")
         self.title = title
@@ -63,6 +63,7 @@ class Task:
         self.category = category
         self.is_required = is_required
         self.completed = False
+        self.time = time  # Optional start time as "HH:MM" string, e.g. "08:30"
 
     def priority_score(self) -> int:
         """Return the numeric score for this task's priority level."""
@@ -124,6 +125,48 @@ class Scheduler:
     def remove_task(self, title: str):
         """Remove all tasks with the given title from the scheduler."""
         self.tasks = [t for t in self.tasks if t.title != title]
+
+    def sort_by_time(self) -> list:
+        """
+        Return tasks sorted by their 'time' attribute in ascending order.
+
+        Tasks with a time set (HH:MM strings) come first, sorted using a
+        lambda that compares the strings directly — lexicographic order works
+        correctly for zero-padded HH:MM values.
+        Tasks with time=None are placed at the end, preserving their original order.
+        """
+        timed = sorted(
+            [t for t in self.tasks if t.time is not None],
+            key=lambda t: t.time,
+        )
+        untimed = [t for t in self.tasks if t.time is None]
+        return timed + untimed
+
+    def filter_tasks(self, status: str = None, pet_name: str = None) -> list:
+        """
+        Return a filtered list of tasks from this scheduler.
+
+        Args:
+            status:   'completed' returns only finished tasks;
+                      'pending'   returns only unfinished tasks;
+                      None        returns all tasks regardless of status.
+            pet_name: When provided, only tasks belonging to the matching pet
+                      are included (case-insensitive match against self.pet.name).
+
+        Returns:
+            List of Task objects that match all supplied filters.
+        """
+        tasks = list(self.tasks)
+
+        if pet_name and self.pet.name.lower() != pet_name.lower():
+            return []  # This scheduler's pet doesn't match — nothing to return
+
+        if status == "completed":
+            tasks = [t for t in tasks if t.completed]
+        elif status == "pending":
+            tasks = [t for t in tasks if not t.completed]
+
+        return tasks
 
     def generate_plan(self) -> DailyPlan:
         """Schedule tasks within the time budget and return a DailyPlan."""

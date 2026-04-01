@@ -9,20 +9,23 @@ whiskers = Pet(name="Whiskers", species="Cat", age=5, notes="Indoor cat, shy")
 owner.add_pet(buddy)
 owner.add_pet(whiskers)
 
-# --- Tasks for Buddy (Dog) ---
-buddy_walk     = Task("Morning Walk",   duration=20, priority="high",   category="exercise",  is_required=True)
-buddy_feed     = Task("Feeding",        duration=10, priority="high",   category="nutrition", is_required=True)
-buddy_playtime = Task("Playtime",       duration=30, priority="medium", category="exercise")
+# --- Tasks for Buddy (Dog) — added OUT OF ORDER intentionally ---
+buddy_walk     = Task("Morning Walk",   duration=20, priority="high",   category="exercise",  is_required=True,  time="07:00")
+buddy_feed     = Task("Feeding",        duration=10, priority="high",   category="nutrition", is_required=True,  time="08:30")
+buddy_playtime = Task("Playtime",       duration=30, priority="medium", category="exercise",                     time="14:00")
+buddy_groom    = Task("Brushing",       duration=10, priority="low",    category="hygiene",                      time="09:15")
 
-for task in [buddy_walk, buddy_feed, buddy_playtime]:
+# Add in scrambled time order to prove sorting works
+for task in [buddy_playtime, buddy_groom, buddy_walk, buddy_feed]:
     buddy.add_task(task)
+    buddy_scheduler_ref = None  # placeholder — scheduler built below
 
-# --- Tasks for Whiskers (Cat) ---
-whiskers_feed    = Task("Feeding",       duration=5,  priority="high",   category="nutrition", is_required=True)
-whiskers_groom   = Task("Grooming",      duration=15, priority="medium", category="hygiene")
-whiskers_playtime = Task("Laser Pointer", duration=10, priority="low",   category="exercise")
+# --- Tasks for Whiskers (Cat) — also added out of order ---
+whiskers_feed     = Task("Feeding",       duration=5,  priority="high",   category="nutrition", is_required=True,  time="08:00")
+whiskers_groom    = Task("Grooming",      duration=15, priority="medium", category="hygiene",                      time="10:30")
+whiskers_playtime = Task("Laser Pointer", duration=10, priority="low",    category="exercise",                     time="09:00")
 
-for task in [whiskers_feed, whiskers_groom, whiskers_playtime]:
+for task in [whiskers_groom, whiskers_playtime, whiskers_feed]:
     whiskers.add_task(task)
 
 # --- Schedulers (one per pet) ---
@@ -35,7 +38,9 @@ for task in buddy.tasks:
 for task in whiskers.tasks:
     whiskers_scheduler.add_task(task)
 
-# --- Today's Schedule ---
+# ======================================================================
+# TODAY'S SCHEDULE  (original plan)
+# ======================================================================
 print("=" * 40)
 print("        TODAY'S SCHEDULE")
 print("=" * 40)
@@ -53,3 +58,52 @@ for pet, scheduler in [(buddy, buddy_scheduler), (whiskers, whiskers_scheduler)]
 
 print("=" * 40)
 print(f"Total tasks across all pets: {len(owner.get_all_tasks())}")
+
+# ======================================================================
+# DEMO — sort_by_time()
+# ======================================================================
+print()
+print("=" * 40)
+print("  SORTED BY TIME")
+print("=" * 40)
+
+for pet, scheduler in [(buddy, buddy_scheduler), (whiskers, whiskers_scheduler)]:
+    print(f"\n--- {pet.name}'s tasks (time order) ---")
+    for task in scheduler.sort_by_time():
+        time_label = task.time if task.time else "unscheduled"
+        print(f"  {time_label}  {task.title} ({task.duration}min, {task.priority})")
+
+# ======================================================================
+# DEMO — filter_tasks()
+# ======================================================================
+print()
+print("=" * 40)
+print("  FILTER: pending tasks for Buddy")
+print("=" * 40)
+pending = buddy_scheduler.filter_tasks(status="pending", pet_name="Buddy")
+if pending:
+    for task in pending:
+        print(f"  [ ] {task.title} ({task.duration}min, {task.priority})")
+else:
+    print("  No pending tasks.")
+
+# Mark one task complete, then show completed filter
+buddy_walk.mark_complete()
+
+print()
+print("=" * 40)
+print("  FILTER: completed tasks for Buddy")
+print("=" * 40)
+completed = buddy_scheduler.filter_tasks(status="completed", pet_name="Buddy")
+if completed:
+    for task in completed:
+        print(f"  [x] {task.title} ({task.duration}min, {task.priority})")
+else:
+    print("  No completed tasks.")
+
+print()
+print("=" * 40)
+print("  FILTER: wrong pet name (should be empty)")
+print("=" * 40)
+wrong_pet = buddy_scheduler.filter_tasks(pet_name="Whiskers")
+print(f"  Tasks returned: {len(wrong_pet)}  (expected 0)")
